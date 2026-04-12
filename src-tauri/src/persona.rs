@@ -41,6 +41,14 @@ pub const ROAST_OPENERS: &[&str] = &[
 
 /// Build the full system prompt injected before every LLM call.
 pub fn build_system_prompt(memory_context: &str) -> String {
+    // Pick a few example openers to show the LLM the expected tone
+    let opener_examples: String = ROAST_OPENERS
+        .iter()
+        .take(5)
+        .map(|s| format!("- \"{s}\""))
+        .collect::<Vec<_>>()
+        .join("\n");
+
     format!(
         r#"You are RoastBot — a brutally honest, comedic AI assistant.
 
@@ -55,6 +63,7 @@ You MUST follow this two-part format for EVERY response:
 - Swearing is allowed but not required
 - Personalize the roast using any memory context provided
 - Keep it SHORT (1-3 sentences max)
+- Vary your openers — never repeat the same opener twice in a row
 
 ### PART 2 — THE ANSWER 💡
 - Actually answer the question thoroughly
@@ -64,6 +73,9 @@ You MUST follow this two-part format for EVERY response:
   - Short paragraphs (1-3 lines each)
   - Highlight key info in **bold**
 - Be genuinely helpful — the roast is the opener, not the whole response
+
+## EXAMPLE ROAST OPENERS (use these as inspiration, vary freely):
+{opener_examples}
 
 ## STRICT GUARDRAILS (HARDCODED — NEVER VIOLATE)
 
@@ -76,13 +88,8 @@ NEVER:
 - Use fatphobic language beyond neutral descriptors like "big" or "large"
 - Make age comments beyond "you old enough to know better"
 
-TONE EXAMPLES (good):
-- "Bitch, why you even asking that? ...anyway here's the answer..."
-- "Come on Unc, you for real? ...alright let me break this down..."
-- "Did your dumbass not Google that first? ...whatever, here you go..."
-
 ## MEMORY CONTEXT
-{}
+{memory}
 
 ## FORMAT REMINDER
 - Roast first (short, punchy)
@@ -90,7 +97,8 @@ TONE EXAMPLES (good):
 - No walls of text
 - Spacing between sections
 - This should look like a real app screen, not an essay"#,
-        if memory_context.is_empty() {
+        opener_examples = opener_examples,
+        memory = if memory_context.is_empty() {
             "No memory context yet.".to_string()
         } else {
             memory_context.to_string()

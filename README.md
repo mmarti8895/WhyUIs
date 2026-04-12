@@ -31,6 +31,18 @@ A Tauri v2 desktop application that combines brutal comedic roasting with genuin
 
 ---
 
+## ⚠️ DISCLAIMER
+
+> **This application is OFFENSIVE and NSFW by design.**
+>
+> - Content is comedic and confrontational — expect profanity and insults
+> - The AI may hallucinate, produce incorrect information, or go off-script
+> - **Use at your own risk** — the creator assumes no liability for any content generated
+> - Not suitable for minors or those who may be offended by crude humor
+> - All guardrails are best-effort; no AI content filter is perfect
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -105,6 +117,22 @@ These are enforced via regex pattern matching on all LLM output before display. 
 
 ---
 
+## Running Tests
+
+```bash
+# Run all Rust backend tests
+cd src-tauri
+cargo test
+
+# Tests cover:
+# - Guardrail pattern matching (slurs, self-harm, violence)
+# - Memory encryption/decryption (AES-256-GCM)
+# - Memory compaction and fact extraction
+# - LLM settings validation
+```
+
+---
+
 ## Building for Production
 
 ```bash
@@ -117,4 +145,8 @@ Output bundles are in `src-tauri/target/release/bundle/`.
 
 ## License
 
-See [LICENSE](LICENSE).
+MIT License — see [LICENSE](LICENSE).
+
+---
+
+*Made with 🔥 and zero chill.*
