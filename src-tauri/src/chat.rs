@@ -1,19 +1,9 @@
 //! Chat module — handles LLM API calls for OpenAI and Anthropic.
 
 use crate::persona::{build_system_prompt, sanitize_output};
+use crate::settings::StoredSettings;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-
-/// Settings passed from the frontend.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatSettings {
-    pub provider: String,
-    pub openai_key: String,
-    pub openai_model: String,
-    pub anthropic_key: String,
-    pub anthropic_model: String,
-    pub temperature: f32,
-}
 
 /// A single message in the conversation history.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,7 +19,7 @@ struct OpenAiRequest {
     model: String,
     messages: Vec<OpenAiMessage>,
     temperature: f32,
-    max_tokens: u32,
+    max_completion_tokens: u32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -103,7 +93,7 @@ struct AnthropicError {
 pub async fn send_to_llm(
     user_message: &str,
     history: &[HistoryMessage],
-    settings: &ChatSettings,
+    settings: &StoredSettings,
     memory_context: &str,
 ) -> Result<String, String> {
     let response = match settings.provider.as_str() {
@@ -122,14 +112,14 @@ pub async fn send_to_llm(
 async fn send_openai(
     user_message: &str,
     history: &[HistoryMessage],
-    settings: &ChatSettings,
+    settings: &StoredSettings,
     memory_context: &str,
 ) -> Result<String, String> {
     if settings.openai_key.is_empty() {
         return Err("OpenAI API key is not configured. Open Settings (⚙️) and add your key.".to_string());
     }
 
-    let system_prompt = build_system_prompt(memory_context);
+    let system_prompt = build_system_prompt(memory_context, settings.temperature);
 
     let mut messages = vec![OpenAiMessage {
         role: "system".to_string(),
@@ -152,7 +142,7 @@ async fn send_openai(
         model: settings.openai_model.clone(),
         messages,
         temperature: settings.temperature,
-        max_tokens: 1024,
+        max_completion_tokens: 1024,
     };
 
     let client = Client::new();
@@ -189,14 +179,14 @@ async fn send_openai(
 async fn send_anthropic(
     user_message: &str,
     history: &[HistoryMessage],
-    settings: &ChatSettings,
+    settings: &StoredSettings,
     memory_context: &str,
 ) -> Result<String, String> {
     if settings.anthropic_key.is_empty() {
         return Err("Anthropic API key is not configured. Open Settings (⚙️) and add your key.".to_string());
     }
 
-    let system_prompt = build_system_prompt(memory_context);
+    let system_prompt = build_system_prompt(memory_context, settings.temperature);
 
     let mut messages: Vec<AnthropicMessage> = history
         .iter()
@@ -257,7 +247,7 @@ mod tests {
 
     #[test]
     fn test_settings_defaults() {
-        let settings = ChatSettings {
+        let settings = StoredSettings {
             provider: "openai".to_string(),
             openai_key: String::new(),
             openai_model: "gpt-4o".to_string(),
@@ -271,7 +261,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_no_key_returns_error() {
-        let settings = ChatSettings {
+        let settings = StoredSettings {
             provider: "openai".to_string(),
             openai_key: String::new(),
             openai_model: "gpt-4o".to_string(),
@@ -286,7 +276,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_anthropic_no_key_returns_error() {
-        let settings = ChatSettings {
+        let settings = StoredSettings {
             provider: "anthropic".to_string(),
             openai_key: String::new(),
             openai_model: "gpt-4o".to_string(),
@@ -297,5 +287,21 @@ mod tests {
         let result = send_to_llm("hello", &[], &settings, "").await;
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("API key"));
+    }
+
+    #[tokio::test]
+    async fn test_unknown_provider_defaults_to_openai_path() {
+        let settings = StoredSettings {
+            provider: "unknown-provider".to_string(),
+            openai_key: String::new(),
+            openai_model: "gpt-4o".to_string(),
+            anthropic_key: String::new(),
+            anthropic_model: "claude-3-5-sonnet-20241022".to_string(),
+            temperature: 0.9,
+        };
+
+        let result = send_to_llm("hello", &[], &settings, "").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("OpenAI API key is not configured"));
     }
 }

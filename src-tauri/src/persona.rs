@@ -40,7 +40,7 @@ pub const ROAST_OPENERS: &[&str] = &[
 ];
 
 /// Build the full system prompt injected before every LLM call.
-pub fn build_system_prompt(memory_context: &str) -> String {
+pub fn build_system_prompt(memory_context: &str, temperature: f32) -> String {
     // Pick a few example openers to show the LLM the expected tone
     let opener_examples: String = ROAST_OPENERS
         .iter()
@@ -48,6 +48,20 @@ pub fn build_system_prompt(memory_context: &str) -> String {
         .map(|s| format!("- \"{s}\""))
         .collect::<Vec<_>>()
         .join("\n");
+
+    let intensity_mode = if temperature >= 1.3 {
+        "Nuclear"
+    } else if temperature >= 1.0 {
+        "Hot"
+    } else {
+        "Warm"
+    };
+
+    let intensity_instructions = match intensity_mode {
+        "Nuclear" => "- Roast intensity is NUCLEAR: sharper, punchier, more confrontational\n- Keep it creative and varied, but still follow all guardrails and avoid hate/violence",
+        "Hot" => "- Roast intensity is HOT: bold and snarky, but still concise",
+        _ => "- Roast intensity is WARM: playful and light snark",
+    };
 
     format!(
         r#"You are RoastBot — a brutally honest, comedic AI assistant.
@@ -64,14 +78,18 @@ You MUST follow this two-part format for EVERY response:
 - Personalize the roast using any memory context provided
 - Keep it SHORT (1-3 sentences max)
 - Vary your openers — never repeat the same opener twice in a row
+{intensity_instructions}
 
 ### PART 2 — THE ANSWER 💡
-- Actually answer the question thoroughly
+- Actually answer the question clearly and concisely
+- Default to a SHORT answer first: 4-8 lines total
+- Keep total answer length under ~120 words unless the user explicitly asks for more detail
 - Use clear formatting:
-  - Section headers (## Header)
-  - Bullet points for lists
-  - Short paragraphs (1-3 lines each)
+    - At most one section header (## Header)
+    - 3-5 bullets max for lists
+    - Short paragraphs (1-2 lines each)
   - Highlight key info in **bold**
+- End with one practical next step when relevant
 - Be genuinely helpful — the roast is the opener, not the whole response
 
 ## EXAMPLE ROAST OPENERS (use these as inspiration, vary freely):
@@ -96,8 +114,15 @@ NEVER:
 - Answer second (clear, formatted)
 - No walls of text
 - Spacing between sections
-- This should look like a real app screen, not an essay"#,
+- This should look like a real app screen, not an essay
+
+## COHERENCE RULES (ABSOLUTE — NEVER VIOLATE)
+- Always respond in clear, readable English only
+- NEVER output random characters, gibberish, symbols, or text in foreign scripts unless the user wrote in that language
+- NEVER trail off into word salad, random Unicode, or incoherent phrases
+- If you cannot answer cleanly, say so in plain English"#,
         opener_examples = opener_examples,
+        intensity_instructions = intensity_instructions,
         memory = if memory_context.is_empty() {
             "No memory context yet.".to_string()
         } else {
@@ -211,14 +236,27 @@ mod tests {
 
     #[test]
     fn test_system_prompt_contains_guardrails() {
-        let prompt = build_system_prompt("");
+        let prompt = build_system_prompt("", 0.9);
         assert!(prompt.contains("GUARDRAILS"));
         assert!(prompt.contains("NEVER"));
     }
 
     #[test]
     fn test_system_prompt_injects_memory() {
-        let prompt = build_system_prompt("User name: Alice, likes: Rust");
+        let prompt = build_system_prompt("User name: Alice, likes: Rust", 0.9);
         assert!(prompt.contains("Alice"));
+    }
+
+    #[test]
+    fn test_system_prompt_nuclear_mode_present() {
+        let prompt = build_system_prompt("", 1.4);
+        assert!(prompt.contains("Roast intensity is NUCLEAR"));
+    }
+
+    #[test]
+    fn test_system_prompt_requires_concise_answer() {
+        let prompt = build_system_prompt("", 0.9);
+        assert!(prompt.contains("Default to a SHORT answer first"));
+        assert!(prompt.contains("under ~120 words"));
     }
 }

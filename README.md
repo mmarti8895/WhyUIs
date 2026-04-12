@@ -1,77 +1,152 @@
-# WhyUIs — AI Roast Chatbot 🔥
+# WhyUIs — AI Roast Chatbot
 
-> **Ask me anything. I'll roast you first, then actually help.**
+Ask anything, get roasted first, then get a real answer.
 
-A Tauri v2 desktop application that combines brutal comedic roasting with genuine AI assistance. Powered by OpenAI or Anthropic LLMs.
+Desktop app built with React + TypeScript + Tauri v2 (Rust backend), supporting OpenAI and Anthropic models.
 
 ---
+
+## The App in Action
+
+![WhyUIs app in action](src-tauri/icons/app-in-action.png)
+
+## This App is Rude AF
+
+![WhyUIs is rude AF](src-tauri/icons/is-rude-af.png)
 
 ## Features
 
-- 🔥 **Roast-first responses** — every answer starts with a personalized roast
-- 🧠 **Conversation memory** — remembers your name, preferences, and recurring topics across sessions
-- 🔒 **Encrypted local storage** — long-term memory stored encrypted on disk
-- 🛡️ **Built-in guardrails** — hardcoded regex patterns block slurs, self-harm, and hate speech
-- 🤖 **Multi-provider** — supports OpenAI (GPT-4o) and Anthropic (Claude 3.5 Sonnet)
-- 💅 **Dark sci-fi UI** — glass morphism + fire orange accent design
-- ⚡ **Tauri v2** — lightweight native desktop app (~5 MB binary)
+- Roast-first assistant with a structured answer phase
+- Multi-session chat UI
+- Local memory (short-term + long-term)
+- Guardrail sanitization on model output
+- API key management in-app
+- `.env` fallback support for API keys and model defaults
 
 ---
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18 + TypeScript + Vite |
-| Backend | Rust (Tauri v2) |
-| LLM | OpenAI API / Anthropic API |
-| Encryption | AES-256-GCM |
-| Compression | gzip (flate2) |
-| Styling | Pure CSS (no framework) |
-
----
-
-## ⚠️ DISCLAIMER
-
-> **This application is OFFENSIVE and NSFW by design.**
->
-> - Content is comedic and confrontational — expect profanity and insults
-> - The AI may hallucinate, produce incorrect information, or go off-script
-> - **Use at your own risk** — the creator assumes no liability for any content generated
-> - Not suitable for minors or those who may be offended by crude humor
-> - All guardrails are best-effort; no AI content filter is perfect
-
----
-
-## Getting Started
+## Setup Workflows
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) v18+
-- [Rust](https://rustup.rs/) (stable)
-- [Tauri CLI v2](https://v2.tauri.app/start/prerequisites/)
+- Node.js 18+
+- Rust stable toolchain
+- Tauri v2 prerequisites for your OS
 
-### Installation
+### Install
 
 ```bash
-# Clone the repo
-git clone https://github.com/your-org/WhyUIs.git
-cd WhyUIs
-
-# Install frontend dependencies
 npm install
+```
 
-# Run in development mode
+### Workflow A: In-app key setup (recommended)
+
+1. Start the app: `npm run tauri dev`
+2. Open Settings from the sidebar
+3. Enter OpenAI and/or Anthropic API key
+4. Save Changes
+
+If no valid key is configured, the chat pane shows a top warning banner with a link to open Settings.
+
+### Workflow B: `.env` defaults
+
+1. Copy `example.env` to `.env`
+2. Fill provider keys/models in `.env`
+3. Start app: `npm run tauri dev`
+
+Important key handling rules:
+
+- Blank keys are treated as not set
+- Placeholder keys are treated as not set:
+	- `sk-your-openai-key-here`
+	- `sk-ant-your-anthropic-key-here`
+- If `.env` key is not set, user can set key in-app and it is persisted locally
+
+Provider preference rule:
+
+- If both providers are configured with valid keys, OpenAI is preferred by default
+
+---
+
+## Running the App
+
+### Development
+
+```bash
 npm run tauri dev
 ```
 
-### Configuration
+### Frontend-only build
 
-1. Copy `example.env` to `.env` (for reference — keys are set in the app UI)
-2. Launch the app
-3. Click ⚙️ **Settings** in the sidebar
-4. Enter your OpenAI or Anthropic API key
-5. Start getting roasted
+```bash
+npm run build
+```
+
+### Production build
+
+```bash
+npm run tauri build
+```
+
+Output bundles: `src-tauri/target/release/bundle/`
+
+---
+
+## API Key Security and Encryption Policy
+
+### At rest
+
+- API settings are stored in an encrypted local file:
+	- `%LOCALAPPDATA%/WhyUIs/settings.dat`
+- Conversation memory is also encrypted locally:
+	- `%LOCALAPPDATA%/WhyUIs/memory.dat`
+- Encryption algorithm: AES-256-GCM
+- Nonce is generated per encryption operation and prepended to ciphertext
+
+### In transit
+
+- Model requests are sent over HTTPS using `reqwest` with `rustls-tls`
+
+### Enforcement behavior
+
+- Frontend does not receive raw API keys from backend
+- UI gets masked key sentinel (`••••••`) when a key exists
+- Placeholder/blank `.env` keys are normalized to unset
+- Missing-key and invalid-key states trigger top-of-chat notices with a Settings shortcut
+
+---
+
+## Current Test Coverage
+
+Current backend test run status: passing.
+
+Command:
+
+```bash
+cd src-tauri
+cargo test
+```
+
+Current totals:
+
+- 14 unit tests passed
+- 0 failed
+
+Covered areas:
+
+- Chat provider error behavior when keys are missing
+- Memory behavior (compaction, extraction, encryption/decryption)
+- Persona guardrails and sanitize behavior
+
+---
+
+## Notable Recent Updates
+
+- Added encrypted local settings store for API credentials
+- Added `.env` fallback handling with placeholder-key detection
+- Added top-of-chat UX notices for missing/invalid keys
+- Updated model dropdown handling so selected model values are reflected correctly
+- Fixed stale Rust chat tests after settings type refactor
 
 ---
 
@@ -79,74 +154,27 @@ npm run tauri dev
 
 ```
 WhyUIs/
-├── src/                      # React + TypeScript frontend
+├── src/
+│   ├── App.tsx
 │   ├── components/
-│   │   ├── ChatWindow.tsx    # Main chat interface
-│   │   ├── MessageBubble.tsx # Message rendering with markdown
-│   │   ├── Sidebar.tsx       # Session management
-│   │   ├── SettingsModal.tsx # API key + model config
-│   │   └── TypingIndicator.tsx
-│   ├── styles/               # CSS modules
-│   └── types.ts              # TypeScript interfaces
-├── src-tauri/                # Rust backend
-│   ├── src/
-│   │   ├── main.rs           # Entry point
-│   │   ├── lib.rs            # Tauri commands
-│   │   ├── chat.rs           # LLM API calls
-│   │   ├── memory.rs         # Short + long-term memory
-│   │   └── persona.rs        # System prompt + guardrails
+│   ├── styles/
+│   └── types.ts
+├── src-tauri/
 │   ├── Cargo.toml
+│   ├── src/
+│   │   ├── chat.rs
+│   │   ├── lib.rs
+│   │   ├── memory.rs
+│   │   ├── persona.rs
+│   │   └── settings.rs
 │   └── tauri.conf.json
-├── PERSONA.md                # Persona rules documentation
-└── example.env               # Environment variable template
+├── PERSONA.md
+├── example.env
+└── README.md
 ```
-
----
-
-## Guardrails
-
-WhyUIs enforces **non-negotiable content guardrails** in `src-tauri/src/persona.rs`:
-
-- ❌ No racial/ethnic slurs
-- ❌ No homophobic, transphobic, or ableist slurs
-- ❌ No self-harm encouragement
-- ❌ No violence encouragement
-- ❌ No targeting of protected classes
-
-These are enforced via regex pattern matching on all LLM output before display. See [PERSONA.md](PERSONA.md) for full documentation.
-
----
-
-## Running Tests
-
-```bash
-# Run all Rust backend tests
-cd src-tauri
-cargo test
-
-# Tests cover:
-# - Guardrail pattern matching (slurs, self-harm, violence)
-# - Memory encryption/decryption (AES-256-GCM)
-# - Memory compaction and fact extraction
-# - LLM settings validation
-```
-
----
-
-## Building for Production
-
-```bash
-npm run tauri build
-```
-
-Output bundles are in `src-tauri/target/release/bundle/`.
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE).
-
----
-
-*Made with 🔥 and zero chill.*
+MIT — see [LICENSE](LICENSE).

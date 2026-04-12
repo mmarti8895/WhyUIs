@@ -23,9 +23,8 @@
   gap: 8px;
 }
 
-.logo-flame {
-  color: var(--accent);
-  filter: drop-shadow(0 0 6px var(--accent-glow));
+.logo-fire {
+  filter: drop-shadow(0 0 8px rgba(255, 129, 43, 0.5));
 }
 
 .logo-text {

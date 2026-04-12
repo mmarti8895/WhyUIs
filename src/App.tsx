@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
@@ -16,10 +16,12 @@ const createSession = (): ChatSession => ({
 const defaultSettings: AppSettings = {
   provider: "openai",
   openaiKey: "",
-  openaiModel: "gpt-4o",
+  openaiModel: "gpt-4.1",
   anthropicKey: "",
-  anthropicModel: "claude-3-5-sonnet-20241022",
+  anthropicModel: "claude-3-7-sonnet-20250219",
   temperature: 0.9,
+  openaiFromEnv: false,
+  anthropicFromEnv: false,
 };
 
 export default function App() {
@@ -28,6 +30,22 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [showSettings, setShowSettings] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showMissingKeyBanner, setShowMissingKeyBanner] = useState(false);
+  const [showInvalidKeyBanner, setShowInvalidKeyBanner] = useState(false);
+
+  const hasConfiguredKey = (s: AppSettings): boolean => {
+    return Boolean(s.openaiKey) || Boolean(s.anthropicKey);
+  };
+
+  // Load settings from the backend on mount (keys are masked, env flags are set).
+  useEffect(() => {
+    invoke<AppSettings>("load_settings")
+      .then((s) => {
+        setSettings(s);
+        setShowMissingKeyBanner(!hasConfiguredKey(s));
+      })
+      .catch(console.error);
+  }, []);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId)!;
 
@@ -60,19 +78,13 @@ export default function App() {
         const response = await invoke<string>("send_message", {
           message: content,
           sessionId: activeSessionId,
-          settings: {
-            provider: settings.provider,
-            openai_key: settings.openaiKey,
-            openai_model: settings.openaiModel,
-            anthropic_key: settings.anthropicKey,
-            anthropic_model: settings.anthropicModel,
-            temperature: settings.temperature,
-          },
           history: activeSession.messages.slice(-14).map((m) => ({
             role: m.role,
             content: m.content,
           })),
         });
+
+        setShowInvalidKeyBanner(false);
 
         const assistantMessage: Message = {
           id: crypto.randomUUID(),
@@ -89,10 +101,25 @@ export default function App() {
           )
         );
       } catch (err) {
+        const errText = String(err);
+        const missingKey = errText.includes("API key is not configured");
+        const invalidKey =
+          errText.includes("OpenAI error") ||
+          errText.includes("Anthropic error") ||
+          errText.toLowerCase().includes("invalid api key") ||
+          errText.includes("HTTP 401");
+
+        if (missingKey) {
+          setShowMissingKeyBanner(true);
+          setShowInvalidKeyBanner(false);
+        } else if (invalidKey) {
+          setShowInvalidKeyBanner(true);
+        }
+
         const errorMessage: Message = {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: `⚠️ **Error:** ${err}\n\nConfigure your API keys in Settings (⚙️) to get roasted properly.`,
+          content: `⚠️ **Error:** ${errText}\n\nConfigure your API keys in Settings (⚙️) to get roasted properly.`,
           timestamp: Date.now(),
         };
         setSessions((prev) =>
@@ -141,6 +168,22 @@ export default function App() {
         onOpenSettings={() => setShowSettings(true)}
       />
       <main className="main-content">
+        {showMissingKeyBanner && (
+          <div className="chat-notice warning">
+            <span>Set an LLM API key to start chatting.</span>
+            <button className="chat-notice-link" onClick={() => setShowSettings(true)}>
+              Open Settings
+            </button>
+          </div>
+        )}
+        {showInvalidKeyBanner && (
+          <div className="chat-notice error">
+            <span>Please enter a correct API key for your LLM.</span>
+            <button className="chat-notice-link" onClick={() => setShowSettings(true)}>
+              Open Settings
+            </button>
+          </div>
+        )}
         <ChatWindow
           session={activeSession}
           isLoading={isLoading}
@@ -150,9 +193,33 @@ export default function App() {
       {showSettings && (
         <SettingsModal
           settings={settings}
-          onSave={(s) => {
-            setSettings(s);
+          onSave={async (s) => {
+            await invoke("save_settings", {
+              request: {
+                provider: s.provider,
+                openaiKey: s.openaiKey,
+                openaiModel: s.openaiModel,
+                anthropicKey: s.anthropicKey,
+                anthropicModel: s.anthropicModel,
+                temperature: s.temperature,
+              },
+            }).catch(console.error);
+            // Reload from backend so keys are re-masked and env flags are fresh.
+            invoke<AppSettings>("load_settings")
+              .then((fresh) => {
+                setSettings(fresh);
+                const hasKey = hasConfiguredKey(fresh);
+                // Requirement: missing-key notice disappears once a key is saved.
+                if (hasKey) {
+                  setShowMissingKeyBanner(false);
+                  setShowInvalidKeyBanner(false);
+                }
+              })
+              .catch(console.error);
             setShowSettings(false);
+          }}
+          onClearMemory={async () => {
+            await invoke("clear_memory");
           }}
           onClose={() => setShowSettings(false)}
         />

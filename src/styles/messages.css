@@ -37,13 +37,13 @@
 }
 
 .message-wrapper.assistant .message-avatar {
-  background: var(--accent-dim);
-  border: 1px solid rgba(255,79,0,0.3);
+  background: transparent;
+  border: none;
   color: var(--accent);
 }
 
 .typing-avatar {
-  font-size: 14px;
+  padding-top: 1px;
 }
 
 .message-bubble {

@@ -22,8 +22,12 @@
 }
 
 .flame-icon {
-  color: var(--accent);
-  filter: drop-shadow(0 0 4px var(--accent-glow));
+  animation: flamePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes flamePulse {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1px) scale(1.03); }
 }
 
 .chat-title {
@@ -76,7 +80,6 @@
 }
 
 .empty-icon {
-  font-size: 56px;
   animation: flicker 3s ease-in-out infinite;
 }
 
