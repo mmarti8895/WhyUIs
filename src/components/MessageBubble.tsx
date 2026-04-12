@@ -1,5 +1,6 @@
 import { Message } from "../types";
-import { User, Bot } from "lucide-react";
+import { User } from "lucide-react";
+import BrandFireIcon from "./BrandFireIcon";
 import "../styles/messages.css";
 
 interface Props {
@@ -83,10 +84,10 @@ export default function MessageBubble({ message }: Props) {
   return (
     <div className={`message-wrapper ${isUser ? "user" : "assistant"}`}>
       <div className="message-avatar">
-        {isUser ? <User size={16} /> : <Bot size={16} />}
+        {isUser ? <User size={16} /> : <BrandFireIcon size="sm" />}
       </div>
       <div className="message-bubble">
-        <div className="message-role">{isUser ? "You" : "RoastBot 🔥"}</div>
+        <div className="message-role">{isUser ? "You" : "RoastBot"}</div>
         {isUser ? (
           <p className="message-text">{message.content}</p>
         ) : (

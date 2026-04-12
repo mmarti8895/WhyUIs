@@ -80,11 +80,13 @@ impl MemoryStore {
 
         // Name extraction
         if let Some(name) = extract_pattern(text, &[
-            r"(?i)my name is ([A-Za-z]+)",
-            r"(?i)call me ([A-Za-z]+)",
-            r"(?i)i'?m ([A-Za-z]+)",
+            r"(?i)my name is\s+([A-Za-z][A-Za-z'-]{1,31})",
+            r"(?i)call me\s+([A-Za-z][A-Za-z'-]{1,31})",
+            r"(?i)i go by\s+([A-Za-z][A-Za-z'-]{1,31})",
         ]) {
-            lt.name = Some(name);
+            if let Some(clean_name) = normalize_name(&name) {
+                lt.name = Some(clean_name);
+            }
         }
 
         // Preference extraction
@@ -110,6 +112,19 @@ impl MemoryStore {
         // Save after extraction
         drop(lt);
         let _ = self.save_long_term();
+    }
+
+    /// Clear both short-term and long-term memory.
+    pub fn clear_all(&self) -> Result<(), String> {
+        {
+            let mut st = self.short_term.lock().unwrap();
+            st.clear();
+        }
+        {
+            let mut lt = self.long_term.lock().unwrap();
+            *lt = LongTermMemory::default();
+        }
+        self.save_long_term()
     }
 
     /// Build the memory context string injected into every prompt.
@@ -149,6 +164,10 @@ impl MemoryStore {
 
     /// Encrypt and save long-term memory to disk.
     fn save_long_term(&self) -> Result<(), String> {
+        if cfg!(test) {
+            return Ok(());
+        }
+
         let lt = self.long_term.lock().unwrap().clone();
         let json = serde_json::to_vec(&lt).map_err(|e| e.to_string())?;
 
@@ -170,6 +189,10 @@ impl MemoryStore {
 
     /// Load and decrypt long-term memory from disk.
     fn load_long_term(&self) -> Result<LongTermMemory, String> {
+        if cfg!(test) {
+            return Ok(LongTermMemory::default());
+        }
+
         let path = memory_file_path();
         if !path.exists() {
             return Ok(LongTermMemory::default());
@@ -249,6 +272,25 @@ fn memory_file_path() -> PathBuf {
         .join(MEMORY_FILE)
 }
 
+fn normalize_name(raw: &str) -> Option<String> {
+    let cleaned = raw
+        .trim()
+        .trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '\'' && c != '-')
+        .to_string();
+
+    if cleaned.len() < 2 || cleaned.len() > 32 {
+        return None;
+    }
+
+    let lower = cleaned.to_ascii_lowercase();
+    let stop_words = ["not", "no", "nah", "none", "unknown"];
+    if stop_words.contains(&lower.as_str()) {
+        return None;
+    }
+
+    Some(cleaned)
+}
+
 /// Reduce content to a compact caveman-style summary.
 fn compact_content(text: &str) -> String {
     let words: Vec<&str> = text.split_whitespace().collect();
@@ -318,6 +360,14 @@ mod tests {
         store.extract_facts("My name is Alice");
         let lt = store.long_term.lock().unwrap();
         assert_eq!(lt.name.as_deref(), Some("Alice"));
+    }
+
+    #[test]
+    fn test_does_not_extract_name_from_plain_im_statement() {
+        let store = MemoryStore::new();
+        store.extract_facts("I'm working on a Tauri app");
+        let lt = store.long_term.lock().unwrap();
+        assert!(lt.name.is_none());
     }
 
     #[test]

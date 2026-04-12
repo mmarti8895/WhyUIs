@@ -28,6 +28,7 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 flate2 = "1"
 dirs = "5"
+dotenvy = "0.15"
 regex = "1"
 
 [features]

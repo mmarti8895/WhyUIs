@@ -19,4 +19,7 @@ export interface AppSettings {
   anthropicKey: string;
   anthropicModel: string;
   temperature: number;
+  /** True when this provider's config is locked by the .env file. */
+  openaiFromEnv: boolean;
+  anthropicFromEnv: boolean;
 }

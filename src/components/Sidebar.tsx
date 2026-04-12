@@ -1,5 +1,6 @@
 import { ChatSession } from "../types";
-import { Plus, Trash2, Settings, Flame, MessageSquare } from "lucide-react";
+import { Plus, Trash2, Settings, MessageSquare } from "lucide-react";
+import BrandFireIcon from "./BrandFireIcon";
 import "../styles/sidebar.css";
 
 interface Props {
@@ -23,7 +24,7 @@ export default function Sidebar({
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <Flame className="logo-flame" size={22} />
+          <BrandFireIcon size="md" className="logo-fire" />
           <span className="logo-text">WhyUIs</span>
         </div>
         <button className="new-chat-btn" onClick={onNewSession} title="New chat (Ctrl+N)">

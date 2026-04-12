@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { ChatSession } from "../types";
 import MessageBubble from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
-import { Send, Flame } from "lucide-react";
+import BrandFireIcon from "./BrandFireIcon";
+import { Send } from "lucide-react";
 import "../styles/chat.css";
 
 interface Props {
@@ -49,7 +50,7 @@ export default function ChatWindow({ session, isLoading, onSendMessage }: Props)
     <div className="chat-window">
       <div className="chat-header">
         <div className="chat-header-left">
-          <Flame className="flame-icon" size={20} />
+          <BrandFireIcon size="sm" className="flame-icon" />
           <span className="chat-title">{session.title}</span>
         </div>
         <div className="chat-header-right">
@@ -60,7 +61,7 @@ export default function ChatWindow({ session, isLoading, onSendMessage }: Props)
       <div className="messages-container">
         {isEmpty ? (
           <div className="empty-state">
-            <div className="empty-icon">🔥</div>
+            <BrandFireIcon size="lg" framed className="empty-icon" />
             <h2 className="empty-title">Ask me anything.</h2>
             <p className="empty-subtitle">
               I'll roast you first, then actually help.
@@ -107,7 +108,7 @@ export default function ChatWindow({ session, isLoading, onSendMessage }: Props)
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Ask something... if you dare 🔥"
+            placeholder="Ask something... if you dare"
             rows={1}
             disabled={isLoading}
           />
