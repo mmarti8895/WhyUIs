@@ -4803,7 +4803,7 @@ dependencies = [
  "dirs 5.0.1",
  "dotenvy",
  "flate2",
- "rand 0.8.5",
+ "rand 0.9.3",
  "regex",
  "reqwest 0.12.28",
  "serde",
